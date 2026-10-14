@@ -4,7 +4,7 @@
   "title": "NotificationRequested v1",
   "description": "Ask for a templated notification. data must not contain secrets; password-reset/verification links use the internal REST endpoint instead.",
   "x-message-kind": "command",
-  "x-producer": "ecommerce-saga-orchestrator",
+  "x-producer": "ecommerce-saga-orchestrator, ecommerce-order-service, ecommerce-payment-service",
   "x-consumers": [
     "ecommerce-notification-service"
   ],
@@ -21,7 +21,11 @@
       "const": 1
     },
     "producer": {
-      "const": "ecommerce-saga-orchestrator"
+      "enum": [
+        "ecommerce-saga-orchestrator",
+        "ecommerce-order-service",
+        "ecommerce-payment-service"
+      ]
     },
     "payload": {
       "type": "object",
@@ -58,6 +62,12 @@
           "maxProperties": 50
         }
       }
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Required: one notification per key and channel."
     }
   }
 }

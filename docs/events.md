@@ -6,28 +6,34 @@ Schemas: [`events/schemas/`](../events/schemas). Examples: [`events/examples/`](
 
 | Command | Senders | Idempotency |
 |---|---|---|
-| `NotificationRequested` v1 | Saga, Order, Payment | `idempotencyKey` required. Unique `(idempotency_key, channel)` constraint |
+| `NotificationRequested` v1 | Saga, Order, Payment (none send it yet) | `idempotencyKey` required: one notification per (key, channel). Validated strictly against this service's schema. Unknown templates, `security` templates (secrets never travel through queues), unsupported channels → not deleted → DLQ |
 
-## Consumed events (SQS `notification-inbox`, schemas owned by producers)
+## Consumed events (SQS `notification-inbox`, raw SNS delivery; schemas owned by the producers)
 
-| Event | Producer | Resulting notification |
+| Event | Producer | Result |
 |---|---|---|
-| `UserRegistered` | Auth | Welcome email. Also upserts the local **recipient directory** (userId → email, name) |
-| `UserEmailVerified` | Auth | Updates recipient directory |
-| `OrderConfirmed` | Order | Order confirmation |
-| `OrderCancelled` | Order | Cancellation notice |
-| `OrderStatusChanged` | Order | Shipped / delivered updates (other transitions ignored) |
-| `PaymentFailed` | Payment | Payment failed, retry link |
-| `RefundSucceeded` | Payment | Refund confirmation |
-| `InventoryLowStock` | Inventory | Admin alert email |
+| `UserRegistered` | Auth | Upserts the **recipient directory** (userId → email, name); welcome email |
+| `UserEmailVerified` | Auth | Updates the directory |
+| `OrderConfirmed` | Order | `order.confirmed` (email + SMS if opted in) |
+| `OrderCancelled` | Order | `order.cancelled`, with the reason in plain words |
+| `OrderStatusChanged` | Order | `SHIPPED` / `DELIVERED` only; other transitions ignored |
+| `PaymentFailed` | Payment | **Nothing**: the checkout is cancelled and `OrderCancelled` (reason `PAYMENT_FAILED`) tells the customer; two emails for one failure would be noise |
+| `RefundSucceeded` | Payment | `payment.refunded` |
+| `InventoryLowStock` | Inventory | `admin.low-stock` to each `ADMIN_ALERT_EMAILS` address |
 
-**Recipient directory.** Events carry `customerId`, not email addresses. This service keeps its
-own copy of contact details, built from `UserRegistered`/`UserEmailVerified`. This is
-*event-carried state transfer*: Notification never queries the Auth database.
+Only the envelope is checked strictly (`messageId`, `messageKind: event`, `messageType`, `correlationId`, `payload`);
+each payload is validated for the fields actually used, tolerating additions, so a producer adding a field never
+breaks this consumer. A payload missing a used field can never succeed → DLQ. Event types not listed are
+acknowledged and ignored.
 
-**Failures never block business flows.** No producer waits for a notification. Delivery
-problems stay inside this service (retries, then DLQ + alarm).
+Dedupe: `processed_messages` (per `messageId`) in the same transaction as the enqueue, plus the
+(dedupe key, channel) constraint for the same fact arriving under a new message id.
+
+**Recipient directory.** Events carry `customerId`, not addresses. This service keeps its own copy of contact
+details from Auth's events (*event-carried state transfer*) and never queries the Auth database.
+
+**Failures never block business flows.** No producer waits for a notification.
 
 ## Produced
 
-None in v1.
+None.

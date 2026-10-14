@@ -1,0 +1,814 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Notification Service",
+    "version": "1.0.0",
+    "description": "Email/SMS notifications, preferences, delivery log. Semantics: docs/api.md"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4006"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Preferences": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "object",
+            "properties": {
+              "orderUpdates": {
+                "type": "boolean"
+              },
+              "marketing": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "orderUpdates",
+              "marketing"
+            ],
+            "additionalProperties": false
+          },
+          "sms": {
+            "type": "object",
+            "properties": {
+              "orderUpdates": {
+                "type": "boolean"
+              },
+              "phone": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "pattern": "^\\+[1-9]\\d{7,14}$"
+              }
+            },
+            "required": [
+              "orderUpdates",
+              "phone"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "email",
+          "sms"
+        ],
+        "additionalProperties": false,
+        "description": "Security messages (verification, password reset) are always sent, whatever these say."
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer"
+          },
+          "code": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "instance"
+        ],
+        "additionalProperties": {}
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "email",
+              "sms"
+            ]
+          },
+          "templateKey": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SENDING",
+              "SENT",
+              "FAILED",
+              "SKIPPED"
+            ]
+          },
+          "skipReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sentAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "channel",
+          "templateKey",
+          "status",
+          "skipReason",
+          "attempts",
+          "createdAt",
+          "sentAt"
+        ]
+      },
+      "AdminNotification": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Notification"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "recipientUserId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "maxAttempts": {
+                "type": "integer"
+              },
+              "nextAttemptAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "lastError": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sourceType": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "recipientUserId",
+              "maxAttempts",
+              "nextAttemptAt",
+              "lastError",
+              "sourceType"
+            ]
+          }
+        ]
+      },
+      "DeadLetter": {
+        "type": "object",
+        "properties": {
+          "queue": {
+            "type": "string"
+          },
+          "sqsMessageId": {
+            "type": "string"
+          },
+          "receiveCount": {
+            "type": "integer"
+          },
+          "sentAt": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messageId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "messageType": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "correlationId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "queue",
+          "sqsMessageId",
+          "receiveCount",
+          "sentAt",
+          "messageId",
+          "messageType",
+          "correlationId"
+        ]
+      },
+      "TransactionalRequest": {
+        "type": "object",
+        "properties": {
+          "recipient": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "email": {
+                "type": "string",
+                "maxLength": 320,
+                "format": "email"
+              },
+              "fullName": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
+            },
+            "required": [
+              "userId",
+              "email",
+              "fullName"
+            ],
+            "additionalProperties": false
+          },
+          "templateKey": {
+            "type": "string",
+            "enum": [
+              "auth.verify-email",
+              "auth.password-reset"
+            ]
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "fullName": {
+                "type": "string",
+                "maxLength": 200
+              }
+            },
+            "additionalProperties": false
+          },
+          "secretData": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "maxLength": 2000,
+                "format": "uri"
+              }
+            },
+            "required": [
+              "url"
+            ],
+            "additionalProperties": false,
+            "description": "Used in memory to render the message. Never stored, logged or queued."
+          }
+        },
+        "required": [
+          "recipient",
+          "templateKey",
+          "secretData"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/api/v1/notifications/preferences": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "My channel preferences",
+        "responses": {
+          "200": {
+            "description": "Preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preferences": {
+                      "$ref": "#/components/schemas/Preferences"
+                    }
+                  },
+                  "required": [
+                    "preferences"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Replace my channel preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Preferences"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preferences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "preferences": {
+                      "$ref": "#/components/schemas/Preferences"
+                    }
+                  },
+                  "required": [
+                    "preferences"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/history": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "My notifications, newest first",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notification"
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "limit",
+                        "nextCursor"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Delivery log (admin)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "QUEUED",
+                "SENDING",
+                "SENT",
+                "FAILED",
+                "SKIPPED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "email",
+                "sms"
+              ]
+            },
+            "required": false,
+            "name": "channel",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "required": false,
+            "name": "templateKey",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/AdminNotification"
+                      }
+                    },
+                    "page": {
+                      "type": "object",
+                      "properties": {
+                        "limit": {
+                          "type": "integer"
+                        },
+                        "nextCursor": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "limit",
+                        "nextCursor"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "page"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/dead-letters": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Peek at this service's DLQs (admin)",
+        "responses": {
+          "200": {
+            "description": "Dead letters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "depths": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "integer"
+                      }
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/DeadLetter"
+                      }
+                    }
+                  },
+                  "required": [
+                    "depths",
+                    "data"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "MESSAGING_DISABLED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/notifications/{id}/retry": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Re-queue a FAILED notification (admin)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Queued",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notification": {
+                      "$ref": "#/components/schemas/AdminNotification"
+                    }
+                  },
+                  "required": [
+                    "notification"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "NOT_FOUND",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "NOT_RETRYABLE",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/notifications/transactional": {
+      "post": {
+        "tags": [
+          "internal"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Send a secret-bearing message now (service token from Auth only)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "required": true,
+            "name": "idempotency-key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransactionalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Sent (or already sent: Idempotency-Replayed)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "notificationId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "SENT"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "notificationId",
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "FORBIDDEN",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "IN_PROGRESS",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "IDEMPOTENCY_KEY_REUSED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "DELIVERY_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

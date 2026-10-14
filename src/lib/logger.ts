@@ -4,7 +4,7 @@ export const SERVICE_NAME = "ecommerce-notification-service";
 
 // Secrets must never reach the logs, so redaction happens here at the logger
 // level instead of relying on every call site to remember.
-const REDACT_PATHS = [
+export const REDACT_PATHS = [
   "req.headers.authorization",
   "req.headers.cookie",
   'res.headers["set-cookie"]',
@@ -17,6 +17,12 @@ const REDACT_PATHS = [
   "*.secret",
   "*.cardNumber",
   "*.cvv",
+  // Secret-bearing message parts (reset / verification links) and rendered bodies.
+  "*.secretData",
+  "*.secretUrl",
+  "*.text",
+  "*.html",
+  "*.smtpPassword",
 ];
 
 export function createLogger(level: string) {
