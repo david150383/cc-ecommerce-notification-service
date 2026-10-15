@@ -1,9 +1,10 @@
 import { CreateQueueCommand, GetQueueAttributesCommand, SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
 import request from "supertest";
-import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { DlqMonitor } from "../src/messaging/dlq-monitor.js";
 import { createWorkers } from "../src/messaging/runner.js";
 import { auth, buildTestContext, newId, resetDatabase, rows } from "./helpers.js";
+import { deleteTestQueues } from "./test-cleanup.js";
 
 // Runs against the local AWS emulator (Floci), with a private queue set per run.
 const endpoint = process.env.TEST_AWS_ENDPOINT_URL ?? "http://localhost:4566";
@@ -16,6 +17,10 @@ const names = { commands: `t-${id}-notification-commands`, inbox: `t-${id}-notif
 const url = (name: string) => `${endpoint}/000000000000/${name}`;
 const arn = async (name: string) => (await sqs.send(new GetQueueAttributesCommand({ QueueUrl: url(name), AttributeNames: ["QueueArn"] }))).Attributes!.QueueArn!;
 const sendRaw = (queue: string, body: string) => sqs.send(new SendMessageCommand({ QueueUrl: url(queue), MessageBody: body }));
+
+afterAll(async () => {
+  await deleteTestQueues(sqs, `t-${id}-`);
+});
 
 beforeAll(async () => {
   for (const [main, dlq] of [[names.commands, names.commandsDlq], [names.inbox, names.inboxDlq]] as const) {
