@@ -108,6 +108,18 @@ describe("NotificationRequested commands", () => {
     expect(await rows()).toHaveLength(1);
   });
 
+  it("order.under-review (sent by the saga on manual review) reaches the customer by email", async () => {
+    const userId = newId();
+    const orderId = "0192a1b2-0000-7000-8000-0000000abc12";
+    await ctx.notifications.handleEvent(registered(userId));
+    await ctx.notifications.handleCommand(command({ recipientUserId: userId, channel: "email", templateKey: "order.under-review", data: { orderId } }));
+    await ctx.notifications.deliverDue();
+    const mail = ctx.email.sent.find((m) => m.subject.startsWith("We are checking order"))!;
+    expect(mail).toMatchObject({ to: "asha@example.com", subject: "We are checking order 000ABC12" });
+    expect(mail.text).toContain("You do not need to do anything");
+    expect(mail.text).toContain(`/orders/${orderId}`);
+  });
+
   it.each([
     ["an unknown template", { templateKey: "nope.nothing", channel: "email" }],
     ["a security template (secrets never travel through queues)", { templateKey: "auth.password-reset", channel: "email" }],

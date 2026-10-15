@@ -150,6 +150,15 @@ export const TEMPLATES: Record<string, Template> = {
       text: `${greet(ctx)}\n\nWe refunded ${money(d, "amount")} for order ${shortId(str(d, "orderId"))}. Depending on your bank it can take a few days to show up.\n`,
     }),
   },
+  /** Sent by the saga when a paid checkout or cancellation needs a person (manual review). */
+  "order.under-review": {
+    category: "order_updates",
+    channels: ["email"],
+    email: (d, ctx) => ({
+      subject: `We are checking order ${shortId(str(d, "orderId"))}`,
+      text: `${greet(ctx)}\n\nSomething in order ${shortId(str(d, "orderId"))} did not complete automatically, so a member of our team is checking it. You do not need to do anything.\nIf you were charged and the order does not go ahead, the full amount is refunded. We will email you as soon as it is sorted.\n\n${ctx.shopBaseUrl}/orders/${str(d, "orderId")}\n`,
+    }),
+  },
   "admin.low-stock": {
     category: "admin",
     channels: ["email"],
