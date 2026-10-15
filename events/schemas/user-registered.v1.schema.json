@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ecommerce.local/auth-service/user-registered.v1.schema.json",
+  "title": "UserRegistered v1",
+  "description": "A new account was created. Contains no credentials or verification tokens.",
+  "x-message-kind": "event",
+  "x-producer": "ecommerce-auth-service",
+  "x-consumers": [
+    "ecommerce-notification-service"
+  ],
+  "x-channel": "SNS auth-events",
+  "$ref": "../common/envelope.v1.schema.json",
+  "properties": {
+    "messageKind": {
+      "const": "event"
+    },
+    "messageType": {
+      "const": "UserRegistered"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "ecommerce-auth-service"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "userId",
+        "email",
+        "fullName",
+        "roles"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "fullName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "roles": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "customer",
+              "admin"
+            ]
+          },
+          "minItems": 1
+        }
+      }
+    }
+  }
+}

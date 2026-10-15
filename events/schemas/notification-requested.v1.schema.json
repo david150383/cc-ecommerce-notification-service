@@ -4,12 +4,16 @@
   "title": "NotificationRequested v1",
   "description": "Ask for a templated notification. data must not contain secrets; password-reset/verification links use the internal REST endpoint instead.",
   "x-message-kind": "command",
-  "x-producer": "ecommerce-saga-orchestrator, ecommerce-order-service, ecommerce-payment-service",
+  "x-producer": [
+    "ecommerce-saga-orchestrator",
+    "ecommerce-order-service",
+    "ecommerce-payment-service"
+  ],
   "x-consumers": [
     "ecommerce-notification-service"
   ],
   "x-channel": "SQS notification-commands",
-  "$ref": "envelope.v1.schema.json",
+  "$ref": "../common/envelope.v1.schema.json",
   "properties": {
     "messageKind": {
       "const": "command"

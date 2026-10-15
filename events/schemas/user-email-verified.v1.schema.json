@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ecommerce.local/auth-service/user-email-verified.v1.schema.json",
+  "title": "UserEmailVerified v1",
+  "description": "The user proved ownership of their email address.",
+  "x-message-kind": "event",
+  "x-producer": "ecommerce-auth-service",
+  "x-consumers": [
+    "ecommerce-notification-service"
+  ],
+  "x-channel": "SNS auth-events",
+  "$ref": "../common/envelope.v1.schema.json",
+  "properties": {
+    "messageKind": {
+      "const": "event"
+    },
+    "messageType": {
+      "const": "UserEmailVerified"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "ecommerce-auth-service"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "userId",
+        "email"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "userId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        }
+      }
+    }
+  }
+}

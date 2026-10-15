@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ecommerce.local/inventory-service/inventory-low-stock.v1.schema.json",
+  "title": "InventoryLowStock v1",
+  "description": "Available quantity fell to or below the SKU's threshold.",
+  "x-message-kind": "event",
+  "x-producer": "ecommerce-inventory-service",
+  "x-consumers": [
+    "ecommerce-notification-service"
+  ],
+  "x-channel": "SNS inventory-events",
+  "$ref": "../common/envelope.v1.schema.json",
+  "properties": {
+    "messageKind": {
+      "const": "event"
+    },
+    "messageType": {
+      "const": "InventoryLowStock"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "ecommerce-inventory-service"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "sku",
+        "available",
+        "threshold"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sku": {
+          "type": "string",
+          "pattern": "^[A-Z0-9][A-Z0-9-]{2,63}$"
+        },
+        "available": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "threshold": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

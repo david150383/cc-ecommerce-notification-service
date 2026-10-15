@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.ecommerce.local/order-service/order-status-changed.v1.schema.json",
+  "title": "OrderStatusChanged v1",
+  "description": "Any status transition (used for tracking notifications such as SHIPPED/DELIVERED).",
+  "x-message-kind": "event",
+  "x-producer": "ecommerce-order-service",
+  "x-consumers": [
+    "ecommerce-notification-service"
+  ],
+  "x-channel": "SNS order-events",
+  "$ref": "../common/envelope.v1.schema.json",
+  "properties": {
+    "messageKind": {
+      "const": "event"
+    },
+    "messageType": {
+      "const": "OrderStatusChanged"
+    },
+    "messageVersion": {
+      "const": 1
+    },
+    "producer": {
+      "const": "ecommerce-order-service"
+    },
+    "payload": {
+      "type": "object",
+      "required": [
+        "orderId",
+        "customerId",
+        "fromStatus",
+        "toStatus"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "orderId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "customerId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "fromStatus": {
+          "enum": [
+            "PENDING",
+            "INVENTORY_RESERVING",
+            "INVENTORY_RESERVED",
+            "PAYMENT_PENDING",
+            "PAYMENT_PROCESSING",
+            "PAYMENT_SUCCEEDED",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED",
+            "DELIVERED",
+            "CANCELLATION_PENDING",
+            "CANCELLED",
+            "FAILED",
+            "REFUND_PENDING",
+            "REFUNDED"
+          ]
+        },
+        "toStatus": {
+          "enum": [
+            "PENDING",
+            "INVENTORY_RESERVING",
+            "INVENTORY_RESERVED",
+            "PAYMENT_PENDING",
+            "PAYMENT_PROCESSING",
+            "PAYMENT_SUCCEEDED",
+            "CONFIRMED",
+            "PROCESSING",
+            "SHIPPED",
+            "DELIVERED",
+            "CANCELLATION_PENDING",
+            "CANCELLED",
+            "FAILED",
+            "REFUND_PENDING",
+            "REFUNDED"
+          ]
+        }
+      }
+    }
+  }
+}
